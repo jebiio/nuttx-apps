@@ -107,8 +107,8 @@ int main(int argc, FAR char *argv[])
 
     dwm_api(fd, "double_enter");
 
-    ret = task_create("read_thread", CONFIG_EXAMPLES_AAA_PRIORITY,
-                      CONFIG_EXAMPLES_AAA_STACKSIZE, read_thread,
+    ret = task_create("read_thread", CONFIG_EXAMPLES_UWB_PRIORITY,
+                      CONFIG_EXAMPLES_UWB_STACKSIZE, read_thread,
                       NULL);
     if (ret < 0)
     {

@@ -18,17 +18,6 @@
 #
 ############################################################################
 
-include $(APPDIR)/Make.defs
-
-# Hello, World! built-in application info
-
-PROGNAME  = $(CONFIG_EXAMPLES_AAA_PROGNAME)
-PRIORITY  = $(CONFIG_EXAMPLES_AAA_PRIORITY)
-STACKSIZE = $(CONFIG_EXAMPLES_AAA_STACKSIZE)
-MODULE    = $(CONFIG_EXAMPLES_AAA)
-
-# Hello, World! Example
-
-MAINSRC = aaa_main.c
-
-include $(APPDIR)/Application.mk
+ifneq ($(CONFIG_EXAMPLES_UWB),)
+CONFIGURED_APPS += $(APPDIR)/examples/uwb
+endif

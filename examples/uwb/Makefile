@@ -18,6 +18,17 @@
 #
 ############################################################################
 
-ifneq ($(CONFIG_EXAMPLES_AAA),)
-CONFIGURED_APPS += $(APPDIR)/examples/aaa
-endif
+include $(APPDIR)/Make.defs
+
+# UWB built-in application info
+
+PROGNAME  = $(CONFIG_EXAMPLES_UWB_PROGNAME)
+PRIORITY  = $(CONFIG_EXAMPLES_UWB_PRIORITY)
+STACKSIZE = $(CONFIG_EXAMPLES_UWB_STACKSIZE)
+MODULE    = $(CONFIG_EXAMPLES_UWB)
+
+# UWB Example
+
+MAINSRC = uwb_main.c
+
+include $(APPDIR)/Application.mk
