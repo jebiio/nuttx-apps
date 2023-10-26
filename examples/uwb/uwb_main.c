@@ -94,18 +94,28 @@ static int read_thread(int argc, FAR char *argv[])
 
 int main(int argc, FAR char *argv[])
 {
-    int fd, ret, len = 0;
-    char str[128];
+    int fd_console, fd_uwb, ret = 0;
+    char buffer[1024];
+    int index = 0;
+    char ch;
 
-    fd = open("/dev/ttyS1", O_RDWR);
-    if (fd < 0)
+    fd_console = open("/dev/ttyS0", O_RDWR);
+    if (fd_console < 0)
+    {
+        printf("uwb_main: ERROR: Failed to open /dev/ttyS0\n");
+        fflush(stdout);
+        return 0;
+    }
+
+    fd_uwb = open("/dev/ttyS1", O_RDWR);
+    if (fd_uwb < 0)
     {
         printf("aaa_main: ERROR: Failed to open /dev/ttyS1\n");
         fflush(stdout);
         return 0;
     }
 
-    dwm_api(fd, "double_enter");
+    dwm_api(fd_uwb, "double_enter");
 
     ret = task_create("read_thread", CONFIG_EXAMPLES_UWB_PRIORITY,
                       CONFIG_EXAMPLES_UWB_STACKSIZE, read_thread,
@@ -120,19 +130,33 @@ int main(int argc, FAR char *argv[])
 
     while (1)
     {
-        char * ch;
-        ch = readline(NULL);
-        if (strncmp(ch, "double_enter", 12) == 0)
+        int ret = read(fd_console, &ch, 1);
+        if (ret < 1)
         {
-            dwm_api(fd, "double_enter");
+            ch = '!';
+        }
+        else if ((ch < 0x20 || ch > 0x7e) && ch != '\n')
+        {
+            ch = '.';
+        }
+
+        if (ch == '\n')
+        {
+            buffer[index] = '\r';
+            ret = write(fd_uwb, buffer, index+1);
+            if (ret < 0)
+            {
+                printf("write error\n");
+            }
+            index = 0;
         }
         else
         {
-            len = strlen(ch);
-            ret = write(fd, ch, len);
+            buffer[index++] = ch; // 버퍼에 문자 저장
         }
+        // ret = write(fd_console, &ch, 1);
     }
     fflush(stdout);
-    close(fd);
+    close(fd_console);
     return 0;
 }
