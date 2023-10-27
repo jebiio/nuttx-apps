@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "system/readline.h"
 
@@ -40,6 +41,8 @@
 /****************************************************************************
  * hello_main
  ****************************************************************************/
+
+bool gApgLoop = false;
 
 void dwm_api(int fd, char *cmd)
 {
@@ -59,6 +62,7 @@ void dwm_api(int fd, char *cmd)
     else
     {
         strcpy(str, cmd);
+        strcat(str, "\r");
         ret = write(fd, str, strlen(str));
         if (ret < 0)
         {
@@ -70,7 +74,6 @@ void dwm_api(int fd, char *cmd)
 static int read_thread(int argc, FAR char *argv[])
 {
     int fd, ret = 0;
-    char buffer;
 
     fd = open("/dev/ttyS1", O_RDWR);
     if (fd < 0)
@@ -79,13 +82,68 @@ static int read_thread(int argc, FAR char *argv[])
         return 0;
     }
 
+    char ch;
+    char buffer[128];
+    int index = 0;
+
     while (1)
     {
-        ret = read(fd, &buffer, sizeof(buffer)); // It return only a char
-        if (ret != 0)
+        ret = read(fd, &ch, sizeof(ch));
+        if (ret > 0)
         {
-            printf("%c", buffer);
+            if (ch == '\n')
+            {
+                buffer[index++] = '\0';
+                if(gApgLoop && strstr(buffer, "apg:")!=NULL)
+                {
+                    printf("%s\n", buffer);
+                }
+                else
+                {
+                    buffer[index] = '\r';
+                    printf("%s\n", buffer);
+                }
+
+                index = 0;
+            }
+            else
+            {
+                buffer[index] = ch;
+                index++;
+            }
         }
+    }
+
+    fflush(stdout);
+    close(fd);
+    return 0;
+}
+
+static int apg_thread(int argc, FAR char *argv[])
+{
+    int fd, ret = 0;
+    char buffer[4];
+
+    fd = open("/dev/ttyS1", O_RDWR);
+    if (fd < 0)
+    {
+        printf("Error UART");
+        return 0;
+    }
+
+    buffer[0] = 'a';
+    buffer[1] = 'p';
+    buffer[2] = 'g';
+    buffer[3] = '\r';
+
+    while (1)
+    {
+        ret = write(fd, buffer, 4);
+        if (ret < 0)
+        {
+            printf("write error\n");
+        }
+        sleep(1);
     }
     fflush(stdout);
     close(fd);
@@ -98,6 +156,7 @@ int main(int argc, FAR char *argv[])
     char buffer[1024];
     int index = 0;
     char ch;
+    int apt_task_id;
 
     fd_console = open("/dev/ttyS0", O_RDWR);
     if (fd_console < 0)
@@ -110,27 +169,28 @@ int main(int argc, FAR char *argv[])
     fd_uwb = open("/dev/ttyS1", O_RDWR);
     if (fd_uwb < 0)
     {
-        printf("aaa_main: ERROR: Failed to open /dev/ttyS1\n");
+        printf("uwb_main: ERROR: Failed to open /dev/ttyS1\n");
         fflush(stdout);
         return 0;
     }
 
-    dwm_api(fd_uwb, "double_enter");
-
     ret = task_create("read_thread", CONFIG_EXAMPLES_UWB_PRIORITY,
-                      CONFIG_EXAMPLES_UWB_STACKSIZE, read_thread,
+                      1024, read_thread,
                       NULL);
     if (ret < 0)
     {
         int errcode = errno;
-        printf("aaa_main: ERROR: Failed to start read_main: %d\n",
+        printf("uwb_main: ERROR: Failed to start read_thread: %d\n",
                errcode);
         return EXIT_FAILURE;
     }
 
+    sleep(0.5);
+    dwm_api(fd_uwb, "double_enter");
+
     while (1)
     {
-        int ret = read(fd_console, &ch, 1);
+        ret = read(fd_console, &ch, 1);
         if (ret < 1)
         {
             ch = '!';
@@ -142,20 +202,46 @@ int main(int argc, FAR char *argv[])
 
         if (ch == '\n')
         {
-            buffer[index] = '\r';
-            ret = write(fd_uwb, buffer, index+1);
-            if (ret < 0)
+            buffer[index++] = '\0';
+            if (strcmp(buffer, "start_apg_loop") == 0)
             {
-                printf("write error\n");
+                ret = task_create("apg_loop", CONFIG_EXAMPLES_UWB_PRIORITY,
+                                  512, apg_thread,
+                                  NULL);
+                if (ret < 0)
+                {
+                    int errcode = errno;
+                    printf("uwb_main: ERROR: Failed to start apg_thread: %d\n",
+                           errcode);
+                    return EXIT_FAILURE;
+                }
+                else
+                {
+                    apt_task_id = ret;
+                    printf("uwb_main: apg_thread started: %d\n",
+                           apt_task_id);
+                    gApgLoop = true;
+                }
+                index = 0;
+                continue;
             }
-            index = 0;
+            else
+            {
+                buffer[index++] = '\r';
+                ret = write(fd_uwb, buffer, index);
+                if (ret < 0)
+                {
+                    printf("write error\n");
+                }
+                index = 0;
+            }
         }
         else
         {
             buffer[index++] = ch; // 버퍼에 문자 저장
         }
-        // ret = write(fd_console, &ch, 1);
     }
+
     fflush(stdout);
     close(fd_console);
     return 0;

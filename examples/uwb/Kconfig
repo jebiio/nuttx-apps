@@ -4,26 +4,26 @@
 #
 
 config EXAMPLES_UWB
-	tristate "\"uwb, World!\" example"
+	tristate "uwb app"
 	default n
 	---help---
-		Enable the \"uwb, World!\" example
+		Enable uwb app
 
 if EXAMPLES_UWB
 
 config EXAMPLES_UWB_PROGNAME
 	string "Program name"
-	default "UWB"
+	default "uwb"
 	---help---
 		This is the name of the program that will be used when the NSH ELF
 		program is installed.
 
 config EXAMPLES_UWB_PRIORITY
-	int "Aaa task priority"
+	int "uwb task priority"
 	default 100
 
 config EXAMPLES_UWB_STACKSIZE
-	int "Aaa stack size"
+	int "uwb stack size"
 	default DEFAULT_TASK_STACKSIZE
 
 endif
