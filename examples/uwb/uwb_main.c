@@ -94,13 +94,12 @@ static int read_thread(int argc, FAR char *argv[])
             if (ch == '\n')
             {
                 buffer[index++] = '\0';
-                if(gApgLoop && strstr(buffer, "apg:")!=NULL)
+                if(gApgLoop)
                 {
-                    printf("%s\n", buffer);
+                    if(strstr(buffer, "apg:")!=NULL) printf("%s\n", buffer);
                 }
                 else
                 {
-                    buffer[index] = '\r';
                     printf("%s\n", buffer);
                 }
 
